@@ -1,0 +1,68 @@
+# ----------------------------------------------------------------
+# .gitignore pour un projet Django
+# ----------------------------------------------------------------
+
+# Environnement Virtuel
+# ---
+# Ignore le dossier d'environnement virtuel spécifié
+django-env/
+# Ignore les noms communs pour les environnements virtuels
+venv/
+env/
+.venv/
+.env/
+
+# Fichiers de base de données
+# ---
+# Ignore la base de données SQLite par défaut
+db.sqlite3
+# Ignore les fichiers de migration automatiques sauf le __init__.py
+*/migrations/0*.py
+
+# Fichiers Python
+# ---
+# Ignore les fichiers de bytecode et le cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Fichiers de dépendances
+# ---
+# Souvent générés localement
+pip-freeze.txt
+requirements.txt.bak
+
+# Fichiers statiques et médias collectés
+# ---
+# Le dossier où `collectstatic` place les fichiers
+staticfiles/
+# Le dossier pour les fichiers uploadés par les utilisateurs
+media/
+
+# Fichiers de logs et de session
+# ---
+*.log
+*.pot
+*.py,cover
+*.coverage
+*.pid
+
+# Fichiers d'environnement et secrets
+# ---
+# Fichiers contenant des clés secrètes, mots de passe, etc.
+.env
+.env.*
+*.env
+
+# Fichiers d'éditeur de code et IDE
+# ---
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Fichiers système
+# ---
+.DS_Store
+Thumbs.db
