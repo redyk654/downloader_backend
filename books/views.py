@@ -8,7 +8,7 @@ from rest_framework.settings import api_settings
 from .models import DownloadStat
 from .serializers import DownloadStatSerializer
 
-from django.db.models import Count, Sum, F
+from django.db.models import Count, Sum, F, Q
 from django.db.models.functions import TruncDay, TruncWeek, TruncMonth
 from django.utils import timezone
 from datetime import timedelta
@@ -150,8 +150,8 @@ class DownloadStatsTimeSeriesAPIView(APIView):
             date=truncated_date
         ).values('date').annotate(
             total_downloads=Count('id'),
-            successful_downloads=Count('id', filter=models.Q(statut_telechargement=True)),
-            failed_downloads=Count('id', filter=models.Q(statut_telechargement=False))
+            successful_downloads=Count('id', filter=Q(statut_telechargement=True)),
+            failed_downloads=Count('id', filter=Q(statut_telechargement=False))
         ).order_by('date')
 
         formatted_data = []
