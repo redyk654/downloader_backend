@@ -7,6 +7,7 @@ from rest_framework.settings import api_settings
 
 from .models import DownloadStat
 from .serializers import DownloadStatSerializer
+from .utils import get_video_info, download_video, get_client_ip
 
 from django.db.models import Count, Sum, F, Q
 from django.db.models.functions import TruncDay, TruncWeek, TruncMonth
@@ -28,25 +29,76 @@ def get_client_ip(request):
 # --- API pour la collecte de données (Endpoint public) ---
 class DownloadStatCreateAPIView(generics.CreateAPIView):
     """
-    API pour enregistrer une nouvelle statistique de téléchargement.
+    API publique qui reçoit une URL et tente de télécharger une vidéo.
+    Elle enregistre toutes les stats associées.
     Cet endpoint est accessible publiquement (sans authentification).
-    Récupère l'IP et l'Agent Utilisateur côté serveur.
     """
     queryset = DownloadStat.objects.all()
     serializer_class = DownloadStatSerializer
     permission_classes = [permissions.AllowAny]
 
-    def perform_create(self, serializer):
-        ip_address = get_client_ip(self.request)
-        user_agent = self.request.META.get('HTTP_USER_AGENT', '')
-        
-        # Le reste des champs sera pris du frontend ou null/blank par défaut
-        serializer.save(
-            horodatage=timezone.now(),
-            adresse_ip=ip_address,
-            agent_utilisateur=user_agent,
-            # pays_ip=pays # Décommenter si tu as une logique de géolocalisation
-        )
+    def create(self, request, *args, **kwargs):
+        url = request.data.get('url')
+        origine = request.data.get('origine_video', 'Inconnue')
+
+        if not url:
+            return Response({"error": "L'URL est requise."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Collecte de l'environnement client
+        ip_address = get_client_ip(request)
+        user_agent = request.META.get('HTTP_USER_AGENT', '')
+        referer = request.META.get('HTTP_REFERER', '')
+
+        # Préparation des champs
+        stat_data = {
+            "url_telechargement": url,
+            "adresse_ip": ip_address,
+            "agent_utilisateur": user_agent,
+            "referer": referer,
+            "horodatage": timezone.now(),
+            "origine_video": origine
+        }
+
+        try:
+            # Analyse du lien (ex: via yt_dlp)
+            info = get_video_info(url)
+
+            # Simulation ou téléchargement réel
+            output_path, file_size = download_video(info)
+
+            stat_data.update({
+                "statut_telechargement": True,
+                "qualite_video": info.get('quality'),
+                "duree_video": int(info.get('duration')),
+                "taille_fichier": file_size,
+            })
+
+            # Enregistrement en BDD
+            serializer = self.get_serializer(data=stat_data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+            # Réponse au client
+            return Response({
+                "message": "Téléchargement réussi.",
+                "download_url": output_path
+            }, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            # En cas d’erreur, on logue quand même la tentative
+            stat_data.update({
+                "statut_telechargement": False,
+                "message_erreur": str(e)
+            })
+
+            serializer = self.get_serializer(data=stat_data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+            return Response({
+                "error": "Échec du téléchargement.",
+                "details": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # --- API pour l'authentification (pour le dashboard) ---

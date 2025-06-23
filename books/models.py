@@ -78,6 +78,13 @@ class DownloadStat(models.Model):
         verbose_name="Taille du Fichier (octets)",
         help_text="La taille du fichier téléchargé en octets."
     )
+    origine_video = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        verbose_name="Origine de la Vidéo",
+        help_text="Origine de la vidéo (ex: 'Facebook', 'YouTube')."
+    )
     pays_ip = models.CharField(
         max_length=100,
         blank=True,
