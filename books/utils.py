@@ -1,30 +1,42 @@
+# utils.py
 import yt_dlp
+import re
 
-def get_video_info(url):
+
+def extract_video_metadata(video_url: str, format_preference: str = 'best'):
     ydl_opts = {
         'quiet': True,
-        'no_warnings': True,
         'skip_download': True,
+        'format': format_preference,
+        'noplaylist': True,
+        'forcejson': True,
+        'extract_flat': False,
     }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=False)
-        return {
-            'title': info.get('title'),
-            'duration': info.get('duration'),  # en secondes
-            'quality': info.get('format'),
-            'filesize': info.get('filesize') or 0,
-            'url': info.get('url'),
-            'ext': info.get('ext'),
-        }
 
-def download_video(info):
-    """
-    Simule un téléchargement et retourne le chemin final et la taille du fichier.
-    En production, tu pourrais renvoyer une URL temporaire signée ou un fichier stocké.
-    """
-    # Ici on ne télécharge pas vraiment, on renvoie un lien simulé
-    fake_path = f"https://cdn.monsite.com/telechargements/{info['title'].replace(' ', '_')}.{info['ext']}"
-    return fake_path, info.get('filesize') or 0
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        try:
+            info_dict = ydl.extract_info(video_url, download=False)
+            direct_url = info_dict.get('url')
+            video_format = sanitize_format(info_dict.get('format_note'))
+            duration = info_dict.get('duration')
+            filesize = info_dict.get('filesize') or info_dict.get('filesize_approx')
+
+            return {
+                'direct_url': direct_url,
+                'format': video_format,
+                'duration': duration,
+                'filesize': filesize,
+            }
+        except yt_dlp.utils.DownloadError as e:
+            raise Exception(f"Erreur yt_dlp : {str(e)}")
+
+
+def sanitize_format(format_note):
+    if not format_note:
+        return "unknown"
+    match = re.match(r"^(\d{3,4})p", format_note.strip())
+    return match.group(0) if match else "unknown"
+
 
 def get_client_ip(request):
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')

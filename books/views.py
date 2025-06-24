@@ -3,13 +3,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
-from rest_framework.settings import api_settings
 
 from .models import DownloadStat
 from .serializers import DownloadStatSerializer
-from .utils import get_video_info, download_video, get_client_ip
+from .utils import get_client_ip, extract_video_metadata
 
-from django.db.models import Count, Sum, F, Q
+from django.db.models import Count, Q
 from django.db.models.functions import TruncDay, TruncWeek, TruncMonth
 from django.utils import timezone
 from datetime import timedelta
@@ -17,88 +16,61 @@ from datetime import timedelta
 # Import pour la géolocalisation d'IP (optionnel, voir explication ci-dessous)
 # import requests # N'oubliez pas d'installer : pip install requests
 
-# --- Fonction utilitaire pour récupérer l'IP du client (plus robuste) ---
-def get_client_ip(request):
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-    if x_forwarded_for:
-        ip = x_forwarded_for.split(',')[0]
-    else:
-        ip = request.META.get('REMOTE_ADDR')
-    return ip
-
 # --- API pour la collecte de données (Endpoint public) ---
 class DownloadStatCreateAPIView(generics.CreateAPIView):
     """
-    API publique qui reçoit une URL et tente de télécharger une vidéo.
-    Elle enregistre toutes les stats associées.
+    Endpoint pour récupérer le lien de téléchargement direct et enregistrer les infos côté serveur.
+    Le client fournit seulement : video_url, origine_video, format_preference (optionnel).
+    Cette API extrait les métadonnées de la vidéo, enregistre les statistiques de téléchargement,
+    et retourne le lien de téléchargement direct.
     Cet endpoint est accessible publiquement (sans authentification).
     """
-    queryset = DownloadStat.objects.all()
     serializer_class = DownloadStatSerializer
     permission_classes = [permissions.AllowAny]
 
-    def create(self, request, *args, **kwargs):
-        url = request.data.get('url')
-        origine = request.data.get('origine_video', 'Inconnue')
+    def post(self, request, *args, **kwargs):
+        video_url = request.data.get('video_url')
+        origine = request.data.get('origine_video')
+        format_preference = request.data.get('format_preference', 'best')
 
-        if not url:
-            return Response({"error": "L'URL est requise."}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Collecte de l'environnement client
-        ip_address = get_client_ip(request)
-        user_agent = request.META.get('HTTP_USER_AGENT', '')
-        referer = request.META.get('HTTP_REFERER', '')
-
-        # Préparation des champs
-        stat_data = {
-            "url_telechargement": url,
-            "adresse_ip": ip_address,
-            "agent_utilisateur": user_agent,
-            "referer": referer,
-            "horodatage": timezone.now(),
-            "origine_video": origine
-        }
+        if not video_url or not origine:
+            return Response({"error": "Les champs 'video_url' et 'origine_video' sont requis."}, status=400)
 
         try:
-            # Analyse du lien (ex: via yt_dlp)
-            info = get_video_info(url)
+            metadata = extract_video_metadata(video_url, format_preference)
 
-            # Simulation ou téléchargement réel
-            output_path, file_size = download_video(info)
+            DownloadStat.objects.create(
+                url_telechargement=video_url,
+                adresse_ip=get_client_ip(request),
+                horodatage=timezone.now(),
+                statut_telechargement=True,
+                agent_utilisateur=request.META.get('HTTP_USER_AGENT', ''),
+                referer=request.META.get('HTTP_REFERER', ''),
+                duree_video=metadata.get('duration'),
+                qualite_video=metadata.get('format'),
+                taille_fichier=metadata.get('filesize'),
+                origine_video=origine,
+            )
 
-            stat_data.update({
-                "statut_telechargement": True,
-                "qualite_video": info.get('quality'),
-                "duree_video": int(info.get('duration')),
-                "taille_fichier": file_size,
-            })
-
-            # Enregistrement en BDD
-            serializer = self.get_serializer(data=stat_data)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-
-            # Réponse au client
             return Response({
-                "message": "Téléchargement réussi.",
-                "download_url": output_path
-            }, status=status.HTTP_201_CREATED)
+                "message": "Lien de téléchargement généré avec succès.",
+                "download_url": metadata.get('direct_url'),
+                "format": metadata.get('format')
+            }, status=status.HTTP_200_OK)
 
         except Exception as e:
-            # En cas d’erreur, on logue quand même la tentative
-            stat_data.update({
-                "statut_telechargement": False,
-                "message_erreur": str(e)
-            })
-
-            serializer = self.get_serializer(data=stat_data)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-
-            return Response({
-                "error": "Échec du téléchargement.",
-                "details": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            # Sauvegarde de l'erreur
+            DownloadStat.objects.create(
+                url_telechargement=video_url,
+                adresse_ip=get_client_ip(request),
+                horodatage=timezone.now(),
+                statut_telechargement=False,
+                agent_utilisateur=request.META.get('HTTP_USER_AGENT', ''),
+                referer=request.META.get('HTTP_REFERER', ''),
+                message_erreur=str(e),
+                origine_video=origine,
+            )
+            return Response({"error": "Échec du traitement.", "details": str(e)}, status=500)
 
 
 # --- API pour l'authentification (pour le dashboard) ---
@@ -247,26 +219,3 @@ class DownloadStatsByCountryAPIView(APIView):
         ).order_by('-count')
         
         return Response(stats_by_country)
-
-# @api_view(['POST'])
-# def facebook_video_download(request):
-#     video_url = request.data.get('video_url')
-#     client_ip = request.META.get('REMOTE_ADDR')
-
-#     if not video_url:
-#         return Response({'error': 'Video URL is required'}, status=status.HTTP_400_BAD_REQUEST)
-
-#     DownloadOperation.objects.create(video_url=video_url, ip_address=client_ip)
-
-#     try:
-#         with yt_dlp.YoutubeDL({'quiet': True, 'skip_download': True}) as ydl:
-#             info = ydl.extract_info(video_url, download=False)
-#             downloadable_url = info['url']
-#     except Exception as e:
-#         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-#     return Response({'downloadable_url': downloadable_url}, status=status.HTTP_200_OK)
-
-# class DownloadOperationViewSet(viewsets.ReadOnlyModelViewSet):
-#     queryset = DownloadOperation.objects.all().order_by('-timestamp')
-#     serializer_class = DownloadOperationSerializer
