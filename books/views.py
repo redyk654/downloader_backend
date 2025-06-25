@@ -1,12 +1,13 @@
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.decorators import api_view
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
 
 from .models import DownloadStat
 from .serializers import DownloadStatSerializer
-from .utils import get_client_ip, extract_video_metadata
+from .utils import get_client_ip, extract_video_metadata, get_available_resolutions
 
 from django.db.models import Count, Q
 from django.db.models.functions import TruncDay, TruncWeek, TruncMonth
@@ -15,6 +16,40 @@ from datetime import timedelta
 
 # Import pour la géolocalisation d'IP (optionnel, voir explication ci-dessous)
 # import requests # N'oubliez pas d'installer : pip install requests
+
+
+@api_view(['POST'])
+def get_formats_video(request):
+    """
+    API publique pour récupérer les résolutions vidéo disponibles (ex: 144p, 240p, etc.)
+    Attend : { "video_url": "..." }
+    """
+    video_url = request.data.get('video_url')
+
+    if not video_url:
+        return Response(
+            {"error": "Le paramètre 'video_url' est requis."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        resolutions = get_available_resolutions(video_url)
+        if not resolutions:
+            return Response(
+                {"error": "Aucune résolution disponible trouvée."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        return Response({"resolutions": resolutions}, status=status.HTTP_200_OK)
+
+    except RuntimeError as err:
+        return Response({"error": str(err)}, status=status.HTTP_502_BAD_GATEWAY)
+
+    except Exception as e:
+        return Response(
+            {"error": "Erreur inattendue", "details": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
 
 # --- API pour la collecte de données (Endpoint public) ---
 class DownloadStatCreateAPIView(generics.CreateAPIView):
@@ -219,3 +254,4 @@ class DownloadStatsByCountryAPIView(APIView):
         ).order_by('-count')
         
         return Response(stats_by_country)
+

@@ -1,6 +1,41 @@
 # utils.py
 import yt_dlp
-import re
+import re, logging
+
+logger = logging.getLogger(__name__)
+
+def get_available_resolutions(video_url):
+    """
+    Retourne la liste des résolutions disponibles pour une vidéo.
+    Exemple : ['144p', '360p', '720p']
+    """
+    ydl_opts = {
+        'quiet': True,
+        'skip_download': True,
+        'no_warnings': True,
+        'socket_timeout': 10,
+        'format': 'bestvideo*+bestaudio/best',
+    }
+
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(video_url, download=False)
+
+        formats = info.get("formats", [])
+        resolutions = set()
+
+        for fmt in formats:
+            height = fmt.get("height")
+            note = fmt.get("format_note") or (f"{height}p" if height else "")
+            cleaned = sanitize_format(note)
+            if cleaned != "unknown":
+                resolutions.add(cleaned)
+
+        return sorted(resolutions, key=lambda x: int(x.replace("p", "")))  # tri croissant
+
+    except Exception as e:
+        logger.error(f"Erreur yt_dlp: {str(e)}")
+        raise RuntimeError("Impossible d’extraire les formats disponibles.")
 
 
 def extract_video_metadata(video_url: str, format_preference: str = 'best'):
