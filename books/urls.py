@@ -6,9 +6,13 @@ from .views import (
     DownloadStatsTimeSeriesAPIView,
     DownloadStatsByQualityAPIView,
     DownloadStatsByCountryAPIView,
+    RegisterAPIView
 )
 
 urlpatterns = [
+    # Endpoint pour l'enregistrement d'un nouvel utilisateur (public)
+    path('auth-register/', RegisterAPIView.as_view(), name='register'),
+
     # Endpoint pour enregistrer un téléchargement (public)
     path('downloads/record/', DownloadStatCreateAPIView.as_view(), name='record_download'),
 

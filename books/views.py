@@ -4,9 +4,10 @@ from rest_framework.views import APIView
 from rest_framework.decorators import api_view
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
+from django.contrib.auth.models import User
 
 from .models import DownloadStat
-from .serializers import DownloadStatSerializer
+from .serializers import DownloadStatSerializer, RegisterSerializer
 from .utils import get_client_ip, extract_video_metadata, get_available_resolutions
 
 from django.db.models import Count, Q
@@ -108,7 +109,7 @@ class DownloadStatCreateAPIView(generics.CreateAPIView):
             return Response({"error": "Échec du traitement.", "details": str(e)}, status=500)
 
 
-# --- API pour l'authentification (pour le dashboard) ---
+# --- API pour l'authentification ---
 class CustomAuthToken(ObtainAuthToken):
     """
     API personnalisée pour obtenir un token d'authentification.
@@ -126,6 +127,28 @@ class CustomAuthToken(ObtainAuthToken):
             'username': user.username,
             'is_admin': user.is_staff # Ajout important : indique si l'utilisateur est un admin
         })
+
+# --- API pour l'enregistrement d'un nouvel utilisateur ---
+class RegisterAPIView(APIView):
+    """
+    API publique pour créer un nouvel utilisateur.
+    Retourne un token immédiatement après enregistrement.
+    """
+    permission_classes = []  # Public
+
+    def post(self, request):
+        serializer = RegisterSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            token, created = Token.objects.get_or_create(user=user)
+            return Response({
+                'token': token.key,
+                'user_id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'is_admin': user.is_staff
+            }, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 # --- API pour les statistiques (Endpoints protégés par authentification ADMIN) ---
