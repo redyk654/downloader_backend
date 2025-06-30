@@ -85,6 +85,13 @@ class DownloadStat(models.Model):
         verbose_name="Origine de la Vidéo",
         help_text="Origine de la vidéo (ex: 'Facebook', 'YouTube')."
     )
+    direct_url = models.URLField(
+        max_length=2000,  # Augmenté pour les URLs longues
+        blank=True,
+        null=True,
+        verbose_name="URL Directe",
+        help_text="L'URL directe du fichier vidéo téléchargé."
+    )
     pays_ip = models.CharField(
         max_length=100,
         blank=True,

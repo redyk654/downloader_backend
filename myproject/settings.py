@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'corsheaders',
+    'django_celery_results',  # Pour stocker les résultats des tâches Celery
 ]
 
 MIDDLEWARE = [
@@ -150,3 +151,16 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10 # Nombre d'éléments par page pour les listes
 }
+
+# --- Configuration de RabbitMQ pour Celery ---
+CELERY_BROKER_URL = 'amqp://localhost'  # URL du broker RabbitMQ
+CELERY_RESULT_BACKEND = 'django-db'  # Utilise la base de données Django pour stocker les résultats des tâches
+CELERY_TIMEZONE = 'Africa/Douala'  # Définit le fuseau horaire pour Celery
+CELERY_CACHE_BACKEND = 'default'
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes max par tâche
+CELERY_TASK_RESULT_EXPIRES = 30 * 60  # 30 minutes max pour le résultat d'une tâche
+
+# Facultatif pour éviter les timezone warnings
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'

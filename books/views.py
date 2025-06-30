@@ -1,29 +1,30 @@
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import User
 
 from .models import DownloadStat
 from .serializers import DownloadStatSerializer, RegisterSerializer
-from .utils import get_client_ip, extract_video_metadata, get_available_resolutions
+from .utils import get_client_ip
+from books.tasks import async_get_available_resolutions, async_extract_metadata_and_save
 
 from django.db.models import Count, Q
 from django.db.models.functions import TruncDay, TruncWeek, TruncMonth
 from django.utils import timezone
 from datetime import timedelta
+from celery.result import AsyncResult
 
 # Import pour la géolocalisation d'IP (optionnel, voir explication ci-dessous)
-# import requests # N'oubliez pas d'installer : pip install requests
 
-
+@permission_classes([permissions.AllowAny])
 @api_view(['POST'])
 def get_formats_video(request):
     """
-    API publique pour récupérer les résolutions vidéo disponibles (ex: 144p, 240p, etc.)
-    Attend : { "video_url": "..." }
+    API publique pour récupérer les résolutions (asynchrone)
+    Retourne un task_id immédiatement
     """
     video_url = request.data.get('video_url')
 
@@ -33,33 +34,18 @@ def get_formats_video(request):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    try:
-        resolutions = get_available_resolutions(video_url)
-        if not resolutions:
-            return Response(
-                {"error": "Aucune résolution disponible trouvée."},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        return Response({"resolutions": resolutions}, status=status.HTTP_200_OK)
-
-    except RuntimeError as err:
-        return Response({"error": str(err)}, status=status.HTTP_502_BAD_GATEWAY)
-
-    except Exception as e:
-        return Response(
-            {"error": "Erreur inattendue", "details": str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+    # Lancement de la tâche asynchrone
+    task = async_get_available_resolutions.delay(video_url)
+    
+    return Response(
+        {"task_id": task.id},
+        status=status.HTTP_202_ACCEPTED
+    )
 
 
-# --- API pour la collecte de données (Endpoint public) ---
 class DownloadStatCreateAPIView(generics.CreateAPIView):
     """
-    Endpoint pour récupérer le lien de téléchargement direct et enregistrer les infos côté serveur.
-    Le client fournit seulement : video_url, origine_video, format_preference (optionnel).
-    Cette API extrait les métadonnées de la vidéo, enregistre les statistiques de téléchargement,
-    et retourne le lien de téléchargement direct.
-    Cet endpoint est accessible publiquement (sans authentification).
+    Endpoint asynchrone pour le téléchargement
     """
     serializer_class = DownloadStatSerializer
     permission_classes = [permissions.AllowAny]
@@ -70,43 +56,42 @@ class DownloadStatCreateAPIView(generics.CreateAPIView):
         format_preference = request.data.get('format_preference', 'best')
 
         if not video_url or not origine:
-            return Response({"error": "Les champs 'video_url' et 'origine_video' sont requis."}, status=400)
-
-        try:
-            metadata = extract_video_metadata(video_url, format_preference)
-
-            DownloadStat.objects.create(
-                url_telechargement=video_url,
-                adresse_ip=get_client_ip(request),
-                horodatage=timezone.now(),
-                statut_telechargement=True,
-                agent_utilisateur=request.META.get('HTTP_USER_AGENT', ''),
-                referer=request.META.get('HTTP_REFERER', ''),
-                duree_video=metadata.get('duration'),
-                qualite_video=metadata.get('format'),
-                taille_fichier=metadata.get('filesize'),
-                origine_video=origine,
+            return Response(
+                {"error": "Les champs 'video_url' et 'origine_video' sont requis."},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
-            return Response({
-                "message": "Lien de téléchargement généré avec succès.",
-                "download_url": metadata.get('direct_url'),
-                "format": metadata.get('format')
-            }, status=status.HTTP_200_OK)
+        # Lancement de la tâche asynchrone
+        task = async_extract_metadata_and_save.delay(
+            request_data=request.data,
+            client_ip=get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', ''),
+            referer=request.META.get('HTTP_REFERER', '')
+        )
+        
+        return Response(
+            {"task_id": task.id},
+            status=status.HTTP_202_ACCEPTED
+        )
 
-        except Exception as e:
-            # Sauvegarde de l'erreur
-            DownloadStat.objects.create(
-                url_telechargement=video_url,
-                adresse_ip=get_client_ip(request),
-                horodatage=timezone.now(),
-                statut_telechargement=False,
-                agent_utilisateur=request.META.get('HTTP_USER_AGENT', ''),
-                referer=request.META.get('HTTP_REFERER', ''),
-                message_erreur=str(e),
-                origine_video=origine,
-            )
-            return Response({"error": "Échec du traitement.", "details": str(e)}, status=500)
+
+class TaskStatusView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, task_id):
+        task_result = AsyncResult(task_id)
+        
+        response_data = {
+            "task_id": task_id,
+            "status": task_result.status,
+        }
+        
+        if task_result.status == "SUCCESS":
+            response_data["result"] = task_result.result
+        elif task_result.status == "FAILURE":
+            response_data["error"] = str(task_result.result)
+        
+        return Response(response_data, status=status.HTTP_200_OK)
 
 
 # --- API pour l'authentification ---
