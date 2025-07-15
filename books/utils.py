@@ -38,7 +38,13 @@ def get_available_resolutions(video_url):
         raise RuntimeError("Impossible d’extraire les formats disponibles.")
 
 
-def extract_video_metadata(video_url: str, format_preference: str = 'best'):
+def extract_video_metadata(video_url: str, format_preference: str = 'worst'):
+    """
+    Extrait les métadonnées d'une vidéo et retourne un dictionnaire avec les informations.
+    """
+    
+    if not video_url:
+        raise ValueError("L'URL de la vidéo ne peut pas être vide.")
     ydl_opts = {
         'quiet': True,
         'skip_download': True,
@@ -78,3 +84,21 @@ def get_client_ip(request):
     if x_forwarded_for:
         return x_forwarded_for.split(',')[0]
     return request.META.get('REMOTE_ADDR')
+
+
+def build_yt_dlp_format(format_str: str) -> str:
+    """
+    Convertit un format simple (ex: '360p') en syntaxe yt-dlp.
+    Exemples :
+        '360p' -> 'bestvideo[height=360]+bestaudio/best[height=360]'
+        '720p' -> 'bestvideo[height=720]+bestaudio/best[height=720]'
+        'best' -> 'best'
+        'worst' -> 'worst'
+    """
+    if format_str in ('best', 'worst'):
+        return format_str
+    if format_str.endswith('p') and format_str[:-1].isdigit():
+        height = format_str[:-1]
+        return f'bestvideo[height={height}]+bestaudio/best[height={height}]'
+    # fallback: retourne le format tel quel
+    return format_str

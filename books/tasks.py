@@ -1,5 +1,5 @@
 from celery import shared_task
-from .utils import get_available_resolutions, extract_video_metadata
+from .utils import get_available_resolutions, extract_video_metadata, build_yt_dlp_format
 from .models import DownloadStat
 from django.utils import timezone
 import logging
@@ -18,12 +18,14 @@ def async_get_available_resolutions(video_url):
 @shared_task
 def async_extract_metadata_and_save(request_data, client_ip, user_agent, referer):
     """Tâche pour extraire les métadonnées et sauvegarder les stats"""
+    
     video_url = request_data.get('video_url')
     origine = request_data.get('origine_video')
-    format_preference = request_data.get('format_preference', 'best')
+    format_preference = request_data.get('format_preference', 'worst')
+    yt_dlp_format = build_yt_dlp_format(format_preference)
     
     try:
-        metadata = extract_video_metadata(video_url, format_preference)
+        metadata = extract_video_metadata(video_url, yt_dlp_format)
         
         DownloadStat.objects.create(
             url_telechargement=video_url,
@@ -36,7 +38,7 @@ def async_extract_metadata_and_save(request_data, client_ip, user_agent, referer
             qualite_video=metadata.get('format'),
             taille_fichier=metadata.get('filesize'),
             origine_video=origine,
-            direct_url=metadata.get('direct_url')  # Nouveau champ à ajouter au modèle
+            direct_url=metadata.get('direct_url')
         )
         
         return {

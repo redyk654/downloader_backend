@@ -53,11 +53,12 @@ class DownloadStatCreateAPIView(generics.CreateAPIView):
     def post(self, request, *args, **kwargs):
         video_url = request.data.get('video_url')
         origine = request.data.get('origine_video')
-        format_preference = request.data.get('format_preference', 'best')
+        format_preference = request.data.get('format_preference', 'worst')
 
-        if not video_url or not origine:
+        if not video_url or not origine or not format_preference:
+            # Vérification des champs requis
             return Response(
-                {"error": "Les champs 'video_url' et 'origine_video' sont requis."},
+                {"error": "Les champs 'video_url', 'origine_video' et 'format_preference' sont requis."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -83,7 +84,7 @@ class TaskStatusView(APIView):
         
         response_data = {
             "task_id": task_id,
-            "status": task_result.status,
+            "task_status": task_result.status,
         }
         
         if task_result.status == "SUCCESS":

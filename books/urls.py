@@ -21,7 +21,7 @@ urlpatterns = [
     path('downloads/formats/', get_formats_video, name='get_formats_videos'),
 
     # Endpoint pour vérifier le statut d'une tâche (public)
-    path('task-status/<str:task_id>/', TaskStatusView.as_view(), name='task_status'),
+    path('downloads/task-status/<str:task_id>/', TaskStatusView.as_view(), name='task_status'),
 
     # Endpoints pour les statistiques (protégés par authentification)
     path('stats/overview/', DownloadStatsOverviewAPIView.as_view(), name='stats_overview'),
