@@ -1,23 +1,17 @@
-name: Deploy Vidown Backend
+name: Deploy Django Backend
 
 on:
   push:
     branches: [main]
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-
-      - name: Copy files to VPS via SSH
+      - name: Copy files to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -28,7 +22,7 @@ jobs:
           target: ${{ secrets.VPS_TARGET_PATH }}
           rm: true
 
-      - name: Run remote deploy script via SSH
+      - name: Deploy on VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -39,5 +33,6 @@ jobs:
             cd ${{ secrets.VPS_TARGET_PATH }}
             docker-compose down
             docker-compose up --build -d
-            docker-compose exec web python manage.py migrate
-            docker-compose exec web python manage.py collectstatic --noinput
+            docker-compose run --rm web python manage.py migrate
+            docker-compose run --rm web python manage.py collectstatic --noinput
+            docker system prune -f

@@ -4,8 +4,6 @@ services:
   db:
     image: postgres:15
     env_file: .env
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -13,26 +11,29 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   rabbitmq:
     image: rabbitmq:3-management
-    ports:
-      - "5672:5672"
-      - "15672:15672"
+    env_file: .env
+    restart: unless-stopped
 
   web:
     build: .
     command: gunicorn myproject.wsgi:application --bind 0.0.0.0:8000
     env_file: .env
-    volumes:
-      - .:/app
-    ports:
-      - "8000:8000"
     depends_on:
       db:
         condition: service_healthy
       rabbitmq:
         condition: service_started
+    volumes:
+      - ./backend:/app
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    expose:
+      - "8000"
+    restart: unless-stopped
 
   celery:
     build: .
@@ -43,18 +44,36 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_started
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    depends_on:
+      - web
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+      - static_volume:/var/www/django_static:ro
+      - media_volume:/var/www/django_media:ro
+    restart: unless-stopped
 
   pgadmin:
     image: dpage/pgadmin4
     env_file: .env
     ports:
-      - "5050:80"
+      - "127.0.0.1:5050:80"
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - pgadmin_data:/var/lib/pgadmin
+    restart: unless-stopped
 
 volumes:
   postgres_data:
   pgadmin_data:
+  static_volume:
+  media_volume:
