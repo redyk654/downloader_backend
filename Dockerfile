@@ -1,6 +1,6 @@
-FROM python:3.9
+FROM python:3.10-slim
 
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONUNBUFFERED=1
 
 # Ajoutez ces lignes avant WORKDIR
 RUN useradd -u 1000 -m appuser && \
@@ -11,9 +11,9 @@ USER appuser
 
 WORKDIR /app
 
-COPY --chown=appuser:appuser requirements.txt .
+COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-COPY --chown=appuser:appuser . .
+COPY . .
 
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["gunicorn", "myproject.wsgi:application", "--bind", "0.0.0.0:8000"]

@@ -20,12 +20,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-z#_5wq1(vo^4h%i^v%k3*6pw*9%oo)5@twb9#3+kwkhwq^4bg$'
+
+import os
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'unsafe-default')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost').split(',')
 
 
 # Application definition
@@ -82,11 +86,11 @@ WSGI_APPLICATION = 'myproject.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',
-        'USER': 'postgres',
-        'PASSWORD': 'postgres',
-        'HOST': 'localhost',  # Doit correspondre au nom du service dans docker-compose
-        'PORT': 5432,
+        'NAME': os.environ.get('POSTGRES_DB', 'postgres'),
+        'USER': os.environ.get('POSTGRES_USER', 'postgres'),
+        'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'postgres'),
+        'HOST': os.environ.get('POSTGRES_HOST', 'db'),
+        'PORT': os.environ.get('POSTGRES_PORT', 5432),
     }
 }
 
@@ -134,9 +138,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173", # Exemple pour Vue.js en développement
-    "http://127.0.0.1:5173", # Exemple pour Vue.js en développement
-    "http://localhost:8000", # Exemple pour Django en développement
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8000",
 ]
 
 # --- Configuration Django REST Framework ---
@@ -153,9 +157,9 @@ REST_FRAMEWORK = {
 }
 
 # --- Configuration de RabbitMQ pour Celery ---
-CELERY_BROKER_URL = 'amqp://localhost'  # URL du broker RabbitMQ
-CELERY_RESULT_BACKEND = 'django-db'  # Utilise la base de données Django pour stocker les résultats des tâches
-CELERY_TIMEZONE = 'Africa/Douala'  # Définit le fuseau horaire pour Celery
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'amqp://rabbitmq')
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'django-db')
+CELERY_TIMEZONE = os.environ.get('CELERY_TIMEZONE', 'Africa/Douala')
 CELERY_CACHE_BACKEND = 'default'
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes max par tâche
