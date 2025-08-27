@@ -11,6 +11,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Clean deployment on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            cd ${{ secrets.VPS_TARGET_PATH }}
+            docker-compose down
+            # Supprimer uniquement les fichiers sources, pas le .env et autres configs
+            find . -maxdepth 1 ! -name '.env' ! -name 'docker-compose.yml' ! -name '.gitkeep' ! -name '.' -exec rm -rf {} +
+
+
       - name: Copy files to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -20,8 +34,8 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           source: '.'
           target: ${{ secrets.VPS_TARGET_PATH }}
-          rm: true
-
+          overwrite: true
+          
       - name: Deploy on VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
