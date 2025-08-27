@@ -1,7 +1,6 @@
 
 Django>=4.2
 djangorestframework
-djangorestframework-authtoken
 psycopg2-binary
 gunicorn
 django-cors-headers
