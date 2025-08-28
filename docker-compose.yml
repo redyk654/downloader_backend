@@ -28,7 +28,7 @@ services:
       rabbitmq:
         condition: service_started
     volumes:
-      - ./backend:/app
+      - .:/app
       - static_volume:/app/staticfiles
       - media_volume:/app/media
     expose:
