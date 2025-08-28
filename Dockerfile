@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Créer un utilisateur non-root
+# Créer un utilisateur non-root avec le même UID que votre user deployer
 RUN useradd -u 1000 -m appuser
 
 # Définir le répertoire de travail
@@ -18,14 +18,14 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copier le code
-COPY . .
-
-# Changer de propriétaire
+# Changer le propriétaire du WORKDIR AVANT de copier les fichiers
 RUN chown -R appuser:appuser /app
 
-# Switch vers l’utilisateur non-root
+# Switch vers l'utilisateur non-root AVANT de copier le code
 USER appuser
+
+# Copier le code avec les bonnes permissions
+COPY --chown=appuser:appuser . .
 
 # Exposer le port
 EXPOSE 8000
