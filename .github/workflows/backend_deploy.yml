@@ -34,24 +34,6 @@ jobs:
           source: '.'
           target: ${{ secrets.VPS_TARGET_PATH }}
           overwrite: true
-      
-      - name: Fix permissions on VPS
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.VPS_PORT }}
-          script: |
-            cd ${{ secrets.VPS_TARGET_PATH }}
-            # Changer le propriétaire de tous les fichiers
-            sudo chown -R ${{ secrets.VPS_USER }}:${{ secrets.VPS_USER }} backend/
-            # Donner les permissions appropriées au dossier backend
-            sudo chmod -R 755 backend/
-            # Permissions spécifiques pour les dossiers d'upload
-            sudo chmod -R 775 backend/media/ backend/staticfiles/ 2>/dev/null || true
-            # Vérification
-            echo "✅ Permissions corrigées pour le dossier backend"
           
       - name: Deploy on VPS
         uses: appleboy/ssh-action@v1.0.3
@@ -64,6 +46,12 @@ jobs:
             cd ${{ secrets.VPS_TARGET_PATH }}
             docker-compose down
             docker-compose up --build -d
+            # CORRIGER les permissions APRÈS le démarrage de Docker
+            sudo chown -R ${{ secrets.VPS_USER }}:${{ secrets.VPS_USER }} backend/
+            sudo chmod -R 755 backend/
+            sudo chmod -R 775 backend/media/ backend/staticfiles/ 2>/dev/null || true
+            echo "✅ Permissions corrigées après le démarrage de Docker"
+            # Exécuter les migrations et collectstatic
             docker-compose run --rm web python manage.py migrate
             docker-compose run --rm web python manage.py collectstatic --noinput
             docker system prune -f
