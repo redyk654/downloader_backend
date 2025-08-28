@@ -48,8 +48,8 @@ jobs:
             docker-compose up --build -d
             # CORRIGER les permissions APRÈS le démarrage de Docker
             sudo chown -R ${{ secrets.VPS_USER }}:${{ secrets.VPS_USER }} staticfiles/
-            sudo chown -R ${{ secrets.VPS_USER }}:${{ secrets.VPS_USER }} mediafiles/
-            sudo chmod -R 775 mediafiles/ staticfiles/ 2>/dev/null || true
+            sudo chown -R ${{ secrets.VPS_USER }}:${{ secrets.VPS_USER }} media/
+            sudo chmod -R 775 media/ staticfiles/ 2>/dev/null || true
             echo "✅ Permissions corrigées après le démarrage de Docker"
             # Exécuter les migrations et collectstatic
             docker-compose run --rm web python manage.py migrate
