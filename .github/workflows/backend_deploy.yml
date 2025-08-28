@@ -44,12 +44,14 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           script: |
             cd ${{ secrets.VPS_TARGET_PATH }}
-            # Changer le propriétaire de tous les fichiers pour deployer
-            sudo chown -R ${{ secrets.VPS_USER }}:${{ secrets.VPS_USER }} .
-            # Donner les permissions appropriées
-            chmod -R 755 .
+            # Changer le propriétaire de tous les fichiers
+            sudo chown -R ${{ secrets.VPS_USER }}:${{ secrets.VPS_USER }} backend/
+            # Donner les permissions appropriées au dossier backend
+            sudo chmod -R 755 backend/
             # Permissions spécifiques pour les dossiers d'upload
-            chmod -R 775 backend/media/ backend/staticfiles/ 2>/dev/null || true
+            sudo chmod -R 775 backend/media/ backend/staticfiles/ 2>/dev/null || true
+            # Vérification
+            echo "✅ Permissions corrigées pour le dossier backend"
           
       - name: Deploy on VPS
         uses: appleboy/ssh-action@v1.0.3
