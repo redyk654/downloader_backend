@@ -31,8 +31,6 @@ services:
       - .:/app
       - static_volume:/app/staticfiles
       - media_volume:/app/media
-    ports:
-      - "8000:8000"
     restart: unless-stopped
 
   celery:
@@ -55,9 +53,20 @@ services:
       - "443:443"
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./nginx/certs:/etc/nginx/certs:ro
       - static_volume:/var/www/django_static:ro
       - media_volume:/var/www/django_media:ro
+      # Volumes pour SSL/Certbot
+      - ./nginx/ssl:/etc/letsencrypt:ro
+      - ./nginx/certbot-www:/var/www/certbot:ro
+    restart: unless-stopped
+
+  # Service Certbot pour le renouvellement automatique
+  certbot:
+    image: certbot/certbot:latest
+    volumes:
+      - ./nginx/ssl:/etc/letsencrypt
+      - ./nginx/certbot-www:/var/www/certbot
+    command: /bin/sh -c "trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;"
     restart: unless-stopped
 
   pgadmin:

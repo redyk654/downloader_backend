@@ -21,8 +21,8 @@ jobs:
           script: |
             cd ${{ secrets.VPS_TARGET_PATH }}
             docker-compose down
-            # Supprimer uniquement les fichiers sources, pas le .env et autres configs
-            find . -maxdepth 1 ! -name '.env' ! -name 'docker-compose.yml' ! -name '.gitkeep' ! -name '.' -exec rm -rf {} +
+            # Supprimer uniquement les fichiers sources, pas le .env, nginx et autres configs
+            find . -maxdepth 1 ! -name '.env' ! -name 'nginx' ! -name 'docker-compose.yml' ! -name '.gitkeep' ! -name '.' -exec rm -rf {} +
 
       - name: Copy files to VPS
         uses: appleboy/scp-action@v0.1.7
@@ -49,7 +49,7 @@ jobs:
             # CORRIGER les permissions APRÈS le démarrage de Docker
             sudo chown -R ${{ secrets.VPS_USER }}:${{ secrets.VPS_USER }} staticfiles/
             sudo chown -R ${{ secrets.VPS_USER }}:${{ secrets.VPS_USER }} media/
-            sudo chmod -R 775 media/ staticfiles/ 2>/dev/null || true
+            sudo chown -R ${{ secrets.VPS_USER }}:${{ secrets.VPS_USER }} nginx/
             echo "✅ Permissions corrigées après le démarrage de Docker"
             # Exécuter les migrations et collectstatic
             docker-compose run --rm web python manage.py migrate
