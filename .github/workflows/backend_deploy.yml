@@ -22,7 +22,7 @@ jobs:
             cd ${{ secrets.VPS_TARGET_PATH }}
             docker-compose down
             # Supprimer uniquement les fichiers sources, pas le .env, nginx et autres configs
-            find . -maxdepth 1 ! -name '.env' ! -name 'nginx' ! -name 'docker-compose.yml' ! -name '.gitkeep' ! -name '.' -exec rm -rf {} +
+            find . -maxdepth 1 ! -name '.env' ! -name 'renew-ssl.sh' ! -name 'nginx' ! -name 'docker-compose.yml' ! -name '.gitkeep' ! -name '.' -exec rm -rf {} +
 
       - name: Copy files to VPS
         uses: appleboy/scp-action@v0.1.7
