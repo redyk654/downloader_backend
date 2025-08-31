@@ -58,6 +58,8 @@ services:
       # Volumes pour SSL/Certbot
       - ./nginx/ssl:/etc/letsencrypt:ro
       - ./nginx/certbot-www:/var/www/certbot:ro
+      # Volume pour le frontend Vue.js
+      - /var/www/vidown:/var/www/vidown-frontend:ro
     restart: unless-stopped
 
   # Service Certbot pour le renouvellement automatique
