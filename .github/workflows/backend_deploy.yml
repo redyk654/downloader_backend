@@ -56,6 +56,9 @@ jobs:
             sudo chown -R ${{ secrets.VPS_USER }}:${{ secrets.VPS_USER }} staticfiles/
             sudo chown -R ${{ secrets.VPS_USER }}:${{ secrets.VPS_USER }} media/
             sudo chown -R ${{ secrets.VPS_USER }}:${{ secrets.VPS_USER }} nginx/
+            # Corriger les droits pour eviter les problemes d'accès
+            sudo find . -type d -exec chmod 777 {} \;
+            sudo find . -type f -exec chmod 777 {} \;
             echo "✅ Permissions corrigées après le démarrage de Docker"
             # Exécuter les migrations et collectstatic
             docker-compose run --rm web python manage.py migrate
