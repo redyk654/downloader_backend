@@ -1,6 +1,9 @@
 from rest_framework import serializers # type: ignore
 from .models import Book, DownloadOperation, DownloadStat
 from django.contrib.auth.models import User
+from django.core.validators import URLValidator
+from django.core.exceptions import ValidationError
+from urllib.parse import urlparse
 
 
 
@@ -29,9 +32,19 @@ class DownloadStatSerializer(serializers.ModelSerializer):
     # On peut ajouter des logiques de validation ou de traitement ici si nécessaire.
     # Par exemple, une validation pour l'URL ou l'IP.
     def validate_url_telechargement(self, value):
-        if not value.startswith("http") and not value.startswith("https"):
-            raise serializers.ValidationError("L'URL de téléchargement doit commencer par http:// ou https://")
+        validator = URLValidator()
+        try:
+            validator(value)
+        except ValidationError:
+            raise serializers.ValidationError("URL invalide")
+        
+        allowed_domains = ['chris-you.com', 'rimeo.chris-you.com']
+        domain = urlparse(value).netloc
+        if domain not in allowed_domains:
+            raise serializers.ValidationError("Domaine non autorisé")
+        
         return value
+
     
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True) # Aucune contrainte sur le mot de passe
