@@ -5,7 +5,7 @@ on:
     branches: [main]
 
 jobs:
-  deploy:
+  cleanup-and-copy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -34,7 +34,11 @@ jobs:
           source: '.'
           target: ${{ secrets.VPS_TARGET_PATH }}
           overwrite: true
-          
+
+  deploy:
+    needs: cleanup-and-copy
+    runs-on: ubuntu-latest
+    steps:
       - name: Deploy on VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -46,6 +50,8 @@ jobs:
             cd ${{ secrets.VPS_TARGET_PATH }}
             docker-compose down
             docker-compose up --build -d
+            # Attendre que les services soient opérationnels
+            sleep 15
             # CORRIGER les permissions APRÈS le démarrage de Docker
             sudo chown -R ${{ secrets.VPS_USER }}:${{ secrets.VPS_USER }} staticfiles/
             sudo chown -R ${{ secrets.VPS_USER }}:${{ secrets.VPS_USER }} media/
@@ -55,3 +61,4 @@ jobs:
             docker-compose run --rm web python manage.py migrate
             docker-compose run --rm web python manage.py collectstatic --noinput
             docker system prune -f
+            echo "✅ Déploiement terminé avec succès"
