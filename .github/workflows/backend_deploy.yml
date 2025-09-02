@@ -20,7 +20,7 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           script: |
             cd ${{ secrets.VPS_TARGET_PATH }}
-            docker-compose down
+            docker-compose -f docker-compose.yml -f docker-compose.monitoring.yml down
             # Supprimer uniquement les fichiers sources, pas le .env, nginx et autres configs
             find . -maxdepth 1 ! -name '.env' ! -name 'check-monitoring.sh' ! -name 'monitoring' ! -name 'renew-ssl.sh' ! -name 'nginx' ! -name 'docker-compose.yml' ! -name 'docker-compose.monitoring.yml' ! -name '.gitkeep' ! -name '.' -exec rm -rf {} +
 
@@ -49,7 +49,9 @@ jobs:
           script: |
             cd ${{ secrets.VPS_TARGET_PATH }}
             docker-compose down
-            docker-compose up --build -d
+            docker-compose -f docker-compose.monitoring.yml down
+            # Construire et démarrer les services Docker
+            docker-compose -f docker-compose.yml -f docker-compose.monitoring.yml up --build -d
             # Attendre que les services soient opérationnels
             sleep 15
             echo "✅ Services opérationnels"
