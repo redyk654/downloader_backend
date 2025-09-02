@@ -148,11 +148,6 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_TLS = True
 
 # CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:8000",
-]
 
 # --- Configuration Django REST Framework ---
 REST_FRAMEWORK = {
@@ -185,3 +180,13 @@ USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 CORS_ALLOW_ALL_ORIGINS = False # Désactive l'accès CORS pour tous les domaines
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8000",
+    "http://rimeo.chris-you.com",
+]
+CORS_ALLOW_CREDENTIALS = True
+CSRF_TRUSTED_ORIGINS = [
+    "https://rimeo.chris-you.com",
+]
