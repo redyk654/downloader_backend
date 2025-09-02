@@ -9,6 +9,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api-token-auth/', CustomAuthToken.as_view(), name='api_token_auth'), # URL pour l'authentification
     path('api/', include('books.urls')), # Inclut les URLs de notre application books
-    path('metrics/', exports.ExportToDjangoView),
+    path('', include('django_prometheus.urls')),
     # path('api/stats/', include
 ]
