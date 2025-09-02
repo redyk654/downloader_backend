@@ -35,7 +35,7 @@ services:
 
   celery:
     build: .
-    command: celery -A myproject worker -l info -c 3
+    command: celery -A myproject worker -l info -c 4
     env_file: .env
     depends_on:
       db:
