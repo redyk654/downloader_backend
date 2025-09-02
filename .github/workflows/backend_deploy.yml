@@ -22,7 +22,7 @@ jobs:
             cd ${{ secrets.VPS_TARGET_PATH }}
             docker-compose down
             # Supprimer uniquement les fichiers sources, pas le .env, nginx et autres configs
-            find . -maxdepth 1 ! -name '.env' ! -name 'renew-ssl.sh' ! -name 'nginx' ! -name 'docker-compose.yml' ! -name '.gitkeep' ! -name '.' -exec rm -rf {} +
+            find . -maxdepth 1 ! -name '.env' ! -name 'check-monitoring.sh' ! -name 'monitoring' ! -name 'renew-ssl.sh' ! -name 'nginx' ! -name 'docker-compose.yml' ! -name 'docker-compose.monitoring.yml' ! -name '.gitkeep' ! -name '.' -exec rm -rf {} +
 
       - name: Copy files to VPS
         uses: appleboy/scp-action@v0.1.7
@@ -52,16 +52,16 @@ jobs:
             docker-compose up --build -d
             # Attendre que les services soient opérationnels
             sleep 15
-            # CORRIGER les permissions APRÈS le démarrage de Docker
-            sudo chown -R ${{ secrets.VPS_USER }}:${{ secrets.VPS_USER }} staticfiles/
-            sudo chown -R ${{ secrets.VPS_USER }}:${{ secrets.VPS_USER }} media/
-            sudo chown -R ${{ secrets.VPS_USER }}:${{ secrets.VPS_USER }} nginx/
-            # Corriger les droits pour eviter les problemes d'accès
-            sudo find . -type d -exec chmod 777 {} \;
-            sudo find . -type f -exec chmod 777 {} \;
-            echo "✅ Permissions corrigées après le démarrage de Docker"
+            echo "✅ Services opérationnels"
             # Exécuter les migrations et collectstatic
             docker-compose run --rm web python manage.py migrate
             docker-compose run --rm web python manage.py collectstatic --noinput
+            # CORRIGER les permissions pour changer le propriétaire de tous les fichiers et dossiers à l'utilisateur VPS_USER
+            sudo chown -R ${{ secrets.VPS_USER }}:${{ secrets.VPS_USER }} .
+            # Corriger les droits pour eviter les problemes d'accès
+            sudo find . -type d -exec chmod 755 {} \;
+            sudo find . -type f -exec chmod 755 {} \;
+            echo "✅ Permissions corrigées après le démarrage de Docker"
+            # Nettoyer les ressources Docker inutilisées
             docker system prune -f
             echo "✅ Déploiement terminé avec succès"

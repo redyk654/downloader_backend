@@ -74,6 +74,37 @@ services:
       - pgadmin_data:/var/lib/pgadmin
     restart: unless-stopped
 
+  # Exporter PostgreSQL pour Prometheus
+  postgres_exporter:
+    image: prometheuscommunity/postgres-exporter
+    container_name: postgres_exporter
+    environment:
+      - DATA_SOURCE_NAME=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable
+    ports:
+      - "9187:9187"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Exporter RabbitMQ pour Prometheus
+  rabbitmq_exporter:
+    image: kbudde/rabbitmq-exporter
+    container_name: rabbitmq_exporter
+    environment:
+      - RABBIT_URL=http://rabbitmq:15672
+      - RABBIT_USER=${RABBITMQ_DEFAULT_USER}
+      - RABBIT_PASSWORD=${RABBITMQ_DEFAULT_PASS}
+      - PUBLISH_PORT=9419
+      - OUTPUT_FORMAT=json
+      - RABBIT_CAPABILITIES=no_sort,bert
+    ports:
+      - "9419:9419"
+    depends_on:
+      rabbitmq:
+        condition: service_started
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   pgadmin_data:
