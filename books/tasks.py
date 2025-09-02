@@ -3,6 +3,7 @@ from .utils import get_available_resolutions, extract_video_metadata, build_yt_d
 from .models import DownloadStat
 from django.utils import timezone
 import logging
+from yt_dlp.utils import ExtractorError
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,22 @@ def async_extract_metadata_and_save(request_data, client_ip, user_agent, referer
             "download_url": metadata.get('direct_url'),
             "format": metadata.get('format')
         }
+    except ExtractorError as e:
+        if 'NsfwViewerHasNoStatedAge' in str(e):
+            # Enregistre l’erreur, mais ne retry pas
+            logger.error("Contenu NSFW non accessible pour ce tweet.")
+            DownloadStat.objects.create(
+                url_telechargement=video_url,
+                adresse_ip=client_ip,
+                horodatage=timezone.now(),
+                statut_telechargement=False,
+                agent_utilisateur=user_agent,
+                referer=referer,
+                message_erreur="Contenu NSFW non accessible",
+                origine_video=origine,
+            )
+            return
+        raise
     except Exception as e:
         DownloadStat.objects.create(
             url_telechargement=video_url,
