@@ -48,8 +48,7 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           script: |
             cd ${{ secrets.VPS_TARGET_PATH }}
-            docker-compose down
-            docker-compose -f docker-compose.monitoring.yml down
+            docker-compose -f docker-compose.monitoring.yml -f docker-compose.yml down
             # Construire et démarrer les services Docker
             docker-compose -f docker-compose.yml -f docker-compose.monitoring.yml up --build -d
             # Attendre que les services soient opérationnels

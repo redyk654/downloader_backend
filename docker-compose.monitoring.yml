@@ -15,6 +15,7 @@ services:
       - '--storage.tsdb.retention.time=15d'
     networks:
       - monitoring_net
+      - vidown_default  # Accès au réseau de l'app principale
     restart: unless-stopped
 
   # Node exporter pour métriques système
@@ -117,3 +118,6 @@ volumes:
 networks:
   monitoring_net:
     driver: bridge
+  # Référence au réseau externe de votre application principale
+  vidown_default:
+    external: true
