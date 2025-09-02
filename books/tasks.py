@@ -16,7 +16,7 @@ def async_get_available_resolutions(video_url):
         logger.error(f"Erreur dans async_get_available_resolutions: {str(e)}")
         raise
 
-@shared_task(autoretry_for=(Exception,), retry_kwargs={'max_retries': 3, 'countdown': 60}, retry_backoff=True)
+@shared_task(autoretry_for=(Exception,), retry_kwargs={'max_retries': 3, 'countdown': 60}, retry_backoff=True, retry_for=(Exception,))
 def async_extract_metadata_and_save(request_data, client_ip, user_agent, referer):
     """Tâche pour extraire les métadonnées et sauvegarder les stats"""
     
@@ -60,7 +60,7 @@ def async_extract_metadata_and_save(request_data, client_ip, user_agent, referer
                 message_erreur="Contenu NSFW non accessible",
                 origine_video=origine,
             )
-            return
+            return  # On ne raise pas, donc pas de retry
         raise
     except Exception as e:
         DownloadStat.objects.create(
