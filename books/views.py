@@ -89,8 +89,9 @@ class TaskStatusView(APIView):
         
         if task_result.status == "SUCCESS":
             response_data["result"] = task_result.result
+            response_data['Content-Disposition'] = 'attachment; filename="video.mp4"'
         elif task_result.status == "FAILURE":
-            response_data["error"] = str(task_result.result)
+            response_data["error_details"] = str(task_result.result)
         
         return Response(response_data, status=status.HTTP_200_OK)
 
@@ -182,7 +183,7 @@ class DownloadStatsTimeSeriesAPIView(APIView):
                 end_date = timezone.datetime.strptime(end_date_str, '%Y-%m-%d').date()
                 queryset = queryset.filter(horodatage__date__lte=end_date)
             except ValueError:
-                return Response({"detail": "Format de date de fin invalide. Utilisez %Y-%MM-%DD."},
+                return Response({"error_details": "Format de date de fin invalide. Utilisez %Y-%MM-%DD."},
                                 status=status.HTTP_400_BAD_REQUEST)
         else:
             end_date = timezone.localdate()
@@ -192,7 +193,7 @@ class DownloadStatsTimeSeriesAPIView(APIView):
                 start_date = timezone.datetime.strptime(start_date_str, '%Y-%m-%d').date()
                 queryset = queryset.filter(horodatage__date__gte=start_date)
             except ValueError:
-                return Response({"detail": "Format de date de début invalide. Utilisez %Y-%MM-%DD."},
+                return Response({"error_details": "Format de date de début invalide. Utilisez %Y-%MM-%DD."},
                                 status=status.HTTP_400_BAD_REQUEST)
         else:
             if period == 'day':
@@ -211,7 +212,7 @@ class DownloadStatsTimeSeriesAPIView(APIView):
         elif period == 'month':
             truncated_date = TruncMonth('horodatage')
         else:
-            return Response({"detail": "Période invalide. Utilisez 'day', 'week' ou 'month'."},
+            return Response({"error_details": "Période invalide. Utilisez 'day', 'week' ou 'month'."},
                             status=status.HTTP_400_BAD_REQUEST)
 
         time_series_data = queryset.annotate(
