@@ -40,11 +40,28 @@ def get_available_resolutions(video_url):
 
 def extract_video_metadata(video_url: str, format_preference: str = 'worst'):
     """
-    Extrait les métadonnées d'une vidéo et retourne un dictionnaire avec les informations.
+    Extracts video metadata and returns a dict with the info.
+    Raises a custom error message in English depending on platform and error type.
     """
-    
     if not video_url:
-        raise ValueError("L'URL de la vidéo ne peut pas être vide.")
+        raise ValueError("Video URL cannot be empty.")
+
+    def detect_platform(url):
+        url = url.lower()
+        if "twitter.com" in url or "x.com" in url:
+            return "Twitter"
+        if "tiktok.com" in url:
+            return "TikTok"
+        if "instagram.com" in url:
+            return "Instagram"
+        if "facebook.com" in url or "fb.watch" in url:
+            return "Facebook"
+        if "youtube.com" in url or "youtu.be" in url:
+            return "YouTube"
+        return "Other"
+
+    platform = detect_platform(video_url)
+
     ydl_opts = {
         'quiet': True,
         'skip_download': True,
@@ -52,6 +69,32 @@ def extract_video_metadata(video_url: str, format_preference: str = 'worst'):
         'noplaylist': True,
         'forcejson': True,
         'extract_flat': False,
+        'extractor_args': {
+            'tiktok': {
+                'app_version': '29.9.9',
+                'manifest_app_version': '299900',
+                'version_code': '299900',
+            }
+        },
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': 'https://www.tiktok.com/',
+            'Origin': 'https://www.tiktok.com',
+            'Authority': 'www.tiktok.com',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate',
+            'DNT': '1',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Sec-Fetch-User': '?1',
+            'TE': 'trailers',
+        },
+        'socket_timeout': 30,
+        'source_address': '0.0.0.0',
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -69,7 +112,32 @@ def extract_video_metadata(video_url: str, format_preference: str = 'worst'):
                 'filesize': filesize,
             }
         except yt_dlp.utils.DownloadError as e:
-            raise Exception(f"Erreur yt_dlp : {str(e)}")
+            err_str = str(e)
+            # Custom error messages in English
+            if platform == "Twitter":
+                if "NsfwViewerHasNoStatedAge" in err_str:
+                    raise Exception("This tweet contains sensitive (NSFW) content and cannot be downloaded without authentication.")
+                if "Requested tweet is unavailable" in err_str:
+                    raise Exception("The requested tweet is unavailable or private.")
+                raise Exception("Unable to download Twitter video. Please check that the tweet is public and accessible.")
+            elif platform == "TikTok":
+                if "Video unavailable" in err_str or "Private video" in err_str:
+                    raise Exception("The TikTok video is private or unavailable.")
+                raise Exception("Unable to download TikTok video. Please check the link.")
+            elif platform == "Instagram":
+                if "login required" in err_str:
+                    raise Exception("Instagram video requires login to download.")
+                raise Exception("Unable to download Instagram video. Please check the link.")
+            elif platform == "Facebook":
+                if "login required" in err_str:
+                    raise Exception("Facebook video requires login to download.")
+                raise Exception("Unable to download Facebook video. Please check the link.")
+            elif platform == "YouTube":
+                raise Exception("YouTube downloading is not supported on this platform.")
+            else:
+                raise Exception("Error extracting video. Please check the link or platform.")
+        except Exception as e:
+            raise Exception(f"Unexpected error while extracting video metadata: {str(e)}")
 
 
 def sanitize_format(format_note):
