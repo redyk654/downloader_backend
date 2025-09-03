@@ -5,6 +5,7 @@ from .views import (
     DownloadStatsTimeSeriesAPIView,
     DownloadStatsByQualityAPIView,
     DownloadStatsByCountryAPIView,
+    ProxyDownloadView,
     RegisterAPIView,
     TaskStatusView,
     get_formats_video
@@ -22,6 +23,9 @@ urlpatterns = [
 
     # Endpoint pour vérifier le statut d'une tâche (public)
     path('downloads/task-status/<str:task_id>/', TaskStatusView.as_view(), name='task_status'),
+
+    # Endpoint pour le téléchargement via un proxy (public)
+    path('downloads/proxy/', ProxyDownloadView.as_view(), name='proxy_download'),
 
     # Endpoints pour les statistiques (protégés par authentification)
     path('stats/overview/', DownloadStatsOverviewAPIView.as_view(), name='stats_overview'),

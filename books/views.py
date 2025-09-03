@@ -5,6 +5,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import User
+from django.http import StreamingHttpResponse
+import requests # type: ignore
 
 from .models import DownloadStat
 from .serializers import DownloadStatSerializer, RegisterSerializer
@@ -77,6 +79,9 @@ class DownloadStatCreateAPIView(generics.CreateAPIView):
 
 
 class TaskStatusView(APIView):
+    """
+    API pour vérifier le statut d'une tâche Celery
+    """
     permission_classes = [permissions.AllowAny]
 
     def get(self, request, task_id):
@@ -94,7 +99,25 @@ class TaskStatusView(APIView):
             response_data["error_details"] = str(task_result.result)
         
         return Response(response_data, status=status.HTTP_200_OK)
+    
 
+class ProxyDownloadView(APIView):
+    """
+    API pour proxyfier le téléchargement d'une vidéo via son URL directe.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        direct_url = request.GET.get('url')
+        if not direct_url:
+            return Response({"error": "URL manquante"}, status=status.HTTP_400_BAD_REQUEST)
+
+        r = requests.get(direct_url, stream=True)
+        
+        response = StreamingHttpResponse(r.iter_content(chunk_size=8192), content_type="video/mp4")
+        response['Content-Disposition'] = 'attachment; filename="video.mp4"'
+        
+        return response
 
 # --- API pour l'authentification ---
 class CustomAuthToken(ObtainAuthToken):
