@@ -119,19 +119,19 @@ def extract_video_metadata(video_url: str, format_preference: str = 'worst'):
                     raise Exception("This tweet contains sensitive (NSFW) content and cannot be downloaded without authentication.")
                 if "Requested tweet is unavailable" in err_str:
                     raise Exception("The requested tweet is unavailable or private.")
-                raise Exception("Unable to download Twitter video. Please check that the tweet is public and accessible.")
+                raise Exception("Unable to download this Twitter video. Please check that the tweet is public and accessible.")
             elif platform == "TikTok":
                 if "Video unavailable" in err_str or "Private video" in err_str:
                     raise Exception("The TikTok video is private or unavailable.")
-                raise Exception("Unable to download TikTok video. Please check the link.")
+                raise Exception("Unable to download this TikTok video. Please check the video is public and accessible.")
             elif platform == "Instagram":
                 if "login required" in err_str:
                     raise Exception("Instagram video requires login to download.")
-                raise Exception("Unable to download Instagram video. Please check the link.")
+                raise Exception("Unable to download this Instagram video. Please check the video is public and accessible.")
             elif platform == "Facebook":
                 if "login required" in err_str:
                     raise Exception("Facebook video requires login to download.")
-                raise Exception("Unable to download Facebook video. Please check the link.")
+                raise Exception("Unable to download this Facebook video. Please check the video is public and accessible.")
             elif platform == "YouTube":
                 raise Exception("YouTube downloading is not supported on this platform.")
             else:
